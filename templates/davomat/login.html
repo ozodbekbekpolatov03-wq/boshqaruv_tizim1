@@ -1,0 +1,19 @@
+<style>
+  body { font-family: Arial, sans-serif; margin: 40px auto; max-width: 360px; }
+  input { width: 100%; padding: 8px; margin: 4px 0 12px; box-sizing: border-box; }
+  button { padding: 10px 16px; border: 0; border-radius: 6px; background: #1a56db; color: #fff; cursor: pointer; }
+  .err { color: #b42318; }
+</style>
+
+<h2>Ustoz uchun kirish</h2>
+
+{% if form.errors %}<p class="err">Login yoki parol noto'g'ri.</p>{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <label>Login</label>
+  <input type="text" name="username" autofocus required>
+  <label>Parol</label>
+  <input type="password" name="password" required>
+  <button type="submit">Kirish</button>
+</form>

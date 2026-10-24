@@ -1,0 +1,24 @@
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  .menu { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .btn { display: inline-block; padding: 8px 14px; border-radius: 6px; border: 0;
+         background: #1a56db; color: #fff; text-decoration: none; font-size: 14px; cursor: pointer; }
+  .btn.green { background: #1a7f37; }
+  .btn.red { background: #b42318; }
+  .btn.gray { background: #4b5563; }
+</style>
+
+<nav class="menu">
+  {% if request.user.teacher_profile %}
+    <a class="btn" href="{% url 'profile' %}">Profil</a>
+  {% endif %}
+  <a class="btn" href="{% url 'board' %}">Tablo</a>
+  <a class="btn green" href="{% url 'present_list' %}">Davomatdan o'tganlar</a>
+  <a class="btn red" href="{% url 'absent_list' %}">Davomatdan o'tmaganlar</a>
+  <a class="btn gray" href="{% url 'weekly_pdf' %}">📄 Shu haftaning PDF</a>
+  <a class="btn gray" href="{% url 'weekly_pdf' %}?week=prev">📄 O'tgan hafta PDF</a>
+  <form method="post" action="{% url 'logout' %}" style="margin-left:auto">
+    {% csrf_token %}
+    <button class="btn gray" type="submit">Chiqish</button>
+  </form>
+</nav>

@@ -1,0 +1,113 @@
+{% if has_today %}<meta http-equiv="refresh" content="30">{% endif %}
+
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  .head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .head img { height: 64px; width: 64px; object-fit: cover; border-radius: 50%; }
+  .menu { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 18px; }
+  .btn { display: inline-block; padding: 8px 14px; border-radius: 6px; border: 0;
+         background: #1a56db; color: #fff; text-decoration: none; font-size: 14px; cursor: pointer; }
+  .btn.green { background: #1a7f37; }
+  .btn.red { background: #b42318; }
+  .btn.gray { background: #4b5563; }
+  details.day { border: 1px solid #ccc; border-radius: 8px; margin: 12px 0; padding: 8px 12px; }
+  details.day > summary { cursor: pointer; font-weight: 600; font-size: 1.05em; }
+  .badge-ok { color: #1a7f37; }
+  .badge-no { color: #b42318; }
+  .cols { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 10px; }
+  .col { flex: 1; min-width: 240px; }
+  .ok h4 { color: #1a7f37; margin: 6px 0; }
+  .no h4 { color: #b42318; margin: 6px 0; }
+  .more { font-size: 13px; }
+</style>
+
+<div class="head">
+  {% if teacher.photo %}<img src="{{ teacher.photo.url }}" alt="">{% endif %}
+  <div>
+    <h2 style="margin:0">{{ teacher.full_name }}</h2>
+    {% if teacher.phone %}<div>{{ teacher.phone }}</div>{% endif %}
+  </div>
+  <form method="post" action="{% url 'logout' %}" style="margin-left:auto">
+    {% csrf_token %}
+    <button class="btn gray" type="submit">Chiqish</button>
+  </form>
+</div>
+
+<div class="menu">
+  <a class="btn" href="{% url 'board' %}">Tablo</a>
+  <a class="btn green" href="{% url 'present_list' %}">Davomatdan o'tganlar</a>
+  <a class="btn red" href="{% url 'absent_list' %}">Davomatdan o'tmaganlar</a>
+  <a class="btn gray" href="{% url 'weekly_pdf' %}{% if group_id %}?group={{ group_id }}{% endif %}">📄 Shu haftaning PDF</a>
+  <a class="btn gray" href="{% url 'weekly_pdf' %}?week=prev{% if group_id %}&group={{ group_id }}{% endif %}">📄 O'tgan hafta PDF</a>
+</div>
+
+<form method="get">
+  <input type="date" name="date" value="{% if one_day %}{{ one_day|date:'Y-m-d' }}{% endif %}">
+  <select name="group">
+    <option value="">Barcha guruhlarim</option>
+    {% for g in groups %}
+      <option value="{{ g.id }}" {% if g.id|stringformat:"s" == group_id %}selected{% endif %}>{{ g.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Ko'rish</button>
+  {% if one_day %}<a href="?group={{ group_id }}">Barcha kunlar</a>{% endif %}
+</form>
+
+<form method="get" action="{% url 'weekly_pdf' %}" style="margin:10px 0">
+  <label>Boshqa hafta (shu sana kirgan hafta):
+    <input type="date" name="date" value="{% now 'Y-m-d' %}">
+  </label>
+  <select name="group">
+    <option value="">Barcha guruhlarim</option>
+    {% for g in groups %}
+      <option value="{{ g.id }}">{{ g.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">PDF yuklab olish</button>
+</form>
+
+{% if not groups %}
+  <p>Sizga hali guruh biriktirilmagan. Administratorga murojaat qiling.</p>
+{% endif %}
+
+{% for b in blocks %}
+  <details class="day" {% if forloop.first %}open{% endif %}>
+    <summary>
+      {{ b.date|date:"d.m.Y, l" }} —
+      <span class="badge-ok">o'tgan: {{ b.came|length }}</span>,
+      <span class="badge-no">o'tmagan: {{ b.absent|length }}</span>
+    </summary>
+
+    <div class="cols">
+      <div class="col ok">
+        <h4>Davomatdan o'tganlar</h4>
+        <ol>
+          {% for a in b.came %}
+            <li>{{ a.student.full_name }}{% if a.student.group %} ({{ a.student.group }}){% endif %} — {{ a.checked_at|time:"H:i" }}</li>
+          {% empty %}
+            <li>Hech kim o'tmagan</li>
+          {% endfor %}
+        </ol>
+        <a class="more" href="{% url 'present_list' %}?date={{ b.date|date:'Y-m-d' }}">To'liq ro'yxat</a>
+      </div>
+
+      <div class="col no">
+        <h4>Davomatdan o'tmaganlar</h4>
+        <ol>
+          {% for s in b.absent %}
+            <li>{{ s.full_name }}{% if s.group %} ({{ s.group }}){% endif %}</li>
+          {% empty %}
+            <li>Hammasi davomatdan o'tgan</li>
+          {% endfor %}
+        </ol>
+        <a class="more" href="{% url 'absent_list' %}?date={{ b.date|date:'Y-m-d' }}">To'liq ro'yxat</a>
+      </div>
+    </div>
+  </details>
+{% empty %}
+  <p>Hali davomat yozuvlari yo'q.</p>
+{% endfor %}
+
+{% if has_more %}
+  <p><a href="?limit={{ next_limit }}&group={{ group_id }}">Oldingi kunlarni ko'rsatish</a></p>
+{% endif %}

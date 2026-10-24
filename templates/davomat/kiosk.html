@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Davomat</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 16px; background: #111; color: #fff; }
+    video { width: 100%; max-width: 480px; border-radius: 12px; transform: scaleX(-1); background: #000; }
+    #status { font-size: 24px; margin: 14px 0; min-height: 34px; }
+    #status.ok { color: #4ade80; }
+    #status.err { color: #f87171; }
+    .pin { margin-top: 18px; }
+    .pin input { padding: 10px; font-size: 18px; width: 140px; text-align: center; }
+    .pin button { padding: 10px 16px; font-size: 18px; border: 0; border-radius: 6px; background: #1a56db; color: #fff; }
+    a { color: #93c5fd; font-size: 14px; }
+  </style>
+</head>
+<body>
+  {% csrf_token %}
+  <h2>Davomat uchun kameraga qarang</h2>
+  <video id="video" autoplay muted playsinline></video>
+  <div id="status">Kamera yoqilmoqda...</div>
+
+  <div class="pin">
+    <small>Yuz tanilmasa, PIN kiriting:</small><br>
+    <input id="pin" type="password" inputmode="numeric" placeholder="PIN">
+    <button id="pinBtn">OK</button>
+  </div>
+
+  <p><a href="{% url 'login' %}">Ustoz kirishi</a></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js"></script>
+  <script>
+    const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/";
+    const CHECKIN_URL = "{% url 'checkin' %}";
+    const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+    const video = document.getElementById("video");
+    const statusEl = document.getElementById("status");
+    let busy = false;
+
+    function setStatus(text, cls) {
+      statusEl.textContent = text;
+      statusEl.className = cls || "";
+    }
+
+    async function send(data) {
+      try {
+        const res = await fetch(CHECKIN_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+          body: JSON.stringify(data),
+        });
+        const j = await res.json();
+        if (j.ok) {
+          setStatus(j.already
+            ? `${j.name}, siz allaqachon o'tgansiz (${j.time})`
+            : `Salom, ${j.name} ✅ (${j.time})`, "ok");
+        } else {
+          setStatus(j.error || "Xatolik", "err");
+        }
+      } catch (e) {
+        setStatus("Server bilan aloqa yo'q", "err");
+      }
+    }
+
+    document.getElementById("pinBtn").onclick = async () => {
+      const pinEl = document.getElementById("pin");
+      const pin = pinEl.value.trim();
+      if (!pin) return;
+      await send({ pin });
+      pinEl.value = "";
+    };
+
+    async function loop() {
+      if (!busy) {
+        const r = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.6 }))
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+        if (r) {
+          busy = true;
+          await send({ descriptor: Array.from(r.descriptor) });
+          setTimeout(() => { busy = false; }, 3000);
+        } else {
+          setStatus("Kameraga qarang");
+        }
+      }
+      setTimeout(loop, 500);
+    }
+
+    (async () => {
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: 640, height: 480 }, audio: false,
+        });
+        video.srcObject = stream;
+        await video.play();
+        setStatus("Kameraga qarang");
+        loop();
+      } catch (e) {
+        setStatus("Kamera ochilmadi: " + e.message, "err");
+      }
+    })();
+  </script>
+</body>
+</html>

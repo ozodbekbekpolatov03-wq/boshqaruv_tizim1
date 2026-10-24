@@ -1,0 +1,16 @@
+{% include "davomat/_nav.html" %}
+
+<h2>Davomatdan o'tmaganlar — {{ day|date:"d.m.Y" }} ({{ absent.count }})</h2>
+
+<form method="get">
+  <input type="date" name="date" value="{{ day|date:'Y-m-d' }}">
+  <button type="submit">Ko'rish</button>
+</form>
+
+<ol>
+  {% for s in absent %}
+    <li>{{ s.full_name }}{% if s.group %} ({{ s.group }}){% endif %}</li>
+  {% empty %}
+    <li>Hammasi davomatdan o'tgan</li>
+  {% endfor %}
+</ol>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yuzni kiritish</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px auto; max-width: 520px; }
+    video { width: 100%; border-radius: 12px; transform: scaleX(-1); background: #000; }
+    button { padding: 12px 20px; font-size: 16px; border: 0; border-radius: 6px; background: #1a7f37; color: #fff; cursor: pointer; margin-top: 12px; }
+    #status { margin: 12px 0; min-height: 24px; }
+    .ok { color: #1a7f37; } .err { color: #b42318; }
+  </style>
+</head>
+<body>
+  {% csrf_token %}
+  <h2>Yuzni kiritish: {{ student.full_name }}</h2>
+  <video id="video" autoplay muted playsinline></video>
+  <canvas id="canvas" style="display:none"></canvas>
+  <div id="status">Kamera yoqilmoqda...</div>
+  <button id="saveBtn" disabled>Yuzni saqlash</button>
+  <p><a href="/admin/">Admin panelga qaytish</a></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js"></script>
+  <script>
+    const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/";
+    const SAVE_URL = "{% url 'save_face' student.id %}";
+    const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const statusEl = document.getElementById("status");
+    const btn = document.getElementById("saveBtn");
+
+    function setStatus(t, c) { statusEl.textContent = t; statusEl.className = c || ""; }
+
+    btn.onclick = async () => {
+      btn.disabled = true;
+      setStatus("Yuz aniqlanmoqda...");
+      const r = await faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.6 }))
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+      if (!r) {
+        setStatus("Yuz topilmadi. Kameraga to'g'ri qarang.", "err");
+        btn.disabled = false;
+        return;
+      }
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+      const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", 0.9));
+
+      const fd = new FormData();
+      fd.append("descriptor", JSON.stringify(Array.from(r.descriptor)));
+      fd.append("photo", blob, "face.jpg");
+
+      const res = await fetch(SAVE_URL, { method: "POST", headers: { "X-CSRFToken": csrf }, body: fd });
+      const j = await res.json();
+      if (j.ok) setStatus("Saqlandi ✅", "ok");
+      else setStatus(j.error || "Xatolik", "err");
+      btn.disabled = false;
+    };
+
+    (async () => {
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        video.srcObject = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        await video.play();
+        setStatus("Tayyor. Talaba kameraga qarasin va tugmani bosing.");
+        btn.disabled = false;
+      } catch (e) {
+        setStatus("Kamera ochilmadi: " + e.message, "err");
+      }
+    })();
+  </script>
+</body>
+</html>

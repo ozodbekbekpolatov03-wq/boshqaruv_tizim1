@@ -1,0 +1,42 @@
+{% if is_today %}<meta http-equiv="refresh" content="15">{% endif %}
+{% include "davomat/_nav.html" %}
+
+<style>
+  .cols { display: flex; gap: 24px; flex-wrap: wrap; }
+  .col { flex: 1; min-width: 260px; border: 1px solid #ccc; border-radius: 8px; padding: 12px; }
+  .ok h3 { color: #1a7f37; }
+  .no h3 { color: #b42318; }
+</style>
+
+<h2>Davomat tablosi — {{ day|date:"d.m.Y" }}</h2>
+
+<form method="get">
+  <input type="date" name="date" value="{{ day|date:'Y-m-d' }}">
+  <button type="submit">Ko'rish</button>
+</form>
+
+{% if is_today %}<p><small>Sahifa har 15 soniyada o'zi yangilanadi.</small></p>{% endif %}
+
+<div class="cols">
+  <div class="col ok">
+    <h3>Davomatdan o'tganlar ({{ came_count }})</h3>
+    <ol>
+      {% for a in came %}
+        <li>{{ a.student.full_name }} — {{ a.checked_at|time:"H:i" }}</li>
+      {% empty %}
+        <li>Hali hech kim o'tmagan</li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <div class="col no">
+    <h3>Davomatdan o'tmaganlar ({{ absent_count }})</h3>
+    <ol>
+      {% for s in absent %}
+        <li>{{ s.full_name }}</li>
+      {% empty %}
+        <li>Hammasi davomatdan o'tgan</li>
+      {% endfor %}
+    </ol>
+  </div>
+</div>

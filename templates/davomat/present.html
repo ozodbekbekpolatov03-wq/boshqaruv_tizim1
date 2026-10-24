@@ -1,0 +1,16 @@
+{% include "davomat/_nav.html" %}
+
+<h2>Davomatdan o'tganlar — {{ day|date:"d.m.Y" }} ({{ came.count }})</h2>
+
+<form method="get">
+  <input type="date" name="date" value="{{ day|date:'Y-m-d' }}">
+  <button type="submit">Ko'rish</button>
+</form>
+
+<ol>
+  {% for a in came %}
+    <li>{{ a.student.full_name }}{% if a.student.group %} ({{ a.student.group }}){% endif %} — {{ a.checked_at|time:"H:i" }}</li>
+  {% empty %}
+    <li>Hech kim o'tmagan</li>
+  {% endfor %}
+</ol>
